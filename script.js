@@ -62,6 +62,33 @@ document.querySelectorAll('#skillFilters .chip').forEach(btn => {
   });
 });
 
+// Print the attached CV PDF (not the webpage)
+const CV_PDF_URL = 'Dr_Amr_Ashour_CV.pdf';
+function printCV() {
+  let frame = document.getElementById('pdfPrintFrame');
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = 'pdfPrintFrame';
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+  }
+  frame.src = CV_PDF_URL;
+  frame.onload = () => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch (err) {
+      // Fallback: open PDF in new tab if direct print is blocked
+      window.open(CV_PDF_URL, '_blank');
+    }
+  };
+}
+
 // Contact form -> mailto
 function sendMail(e) {
   e.preventDefault();
