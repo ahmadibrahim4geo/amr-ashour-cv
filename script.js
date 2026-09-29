@@ -62,51 +62,21 @@ document.querySelectorAll('#skillFilters .chip').forEach(btn => {
   });
 });
 
-// Print the attached CV PDF (not the webpage)
+// Open the CV PDF in a new tab and best-effort trigger its print dialog.
+// NOTE: browsers do NOT allow a page to silently print a PDF plugin (iframe
+// print / fetch-blob print are blocked), so opening the PDF itself is the
+// only reliable cross-browser behavior. The viewer has its own Print button.
 const CV_PDF_URL = 'Dr_Amr_Ashour_CV.pdf';
-async function printCV() {
-  // NOTE: browsers block printing a 0x0 iframe, so we use a real-size
-  // off-screen frame + a delay until the PDF plugin finishes rendering.
+function printCV() {
+  // Must run synchronously in the click handler or popup blockers stop it.
+  const w = window.open(CV_PDF_URL, '_blank', 'noopener');
+  if (!w) return true; // blocked -> let the anchor href navigate normally
   try {
-    const res = await fetch(CV_PDF_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error('PDF not found: ' + res.status);
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    let frame = document.getElementById('pdfPrintFrame');
-    if (frame) frame.remove();
-    frame = document.createElement('iframe');
-    frame.id = 'pdfPrintFrame';
-    frame.src = blobUrl;
-    // Must have real dimensions but kept off-screen
-    frame.style.position = 'fixed';
-    frame.style.left = '-9999px';
-    frame.style.top = '0';
-    frame.style.width = '800px';
-    frame.style.height = '600px';
-    frame.style.border = '0';
-    document.body.appendChild(frame);
-
-    frame.onload = () => {
-      setTimeout(() => {
-        try {
-          frame.contentWindow.focus();
-          frame.contentWindow.print();
-        } catch (err) {
-          window.open(blobUrl, '_blank');
-        }
-      }, 900);
-    };
-    // Safety fallback if onload never fires (some PDF viewers)
-    setTimeout(() => {
-      if (!frame.dataset.printed) {
-        try { frame.contentWindow.print(); frame.dataset.printed = '1'; } catch (e) { /* ignore */ }
-      }
-    }, 2500);
-  } catch (err) {
-    // Last resort: open the PDF itself in a new tab (user prints with Ctrl+P)
-    window.open(CV_PDF_URL, '_blank');
-  }
+    w.addEventListener('load', () => {
+      setTimeout(() => { try { w.print(); } catch (e) { /* viewer handles it */ } }, 1200);
+    });
+  } catch (e) { /* cross-origin viewer: user prints with Ctrl+P */ }
+  return false; // we already opened it; stop anchor navigation
 }
 
 // Contact form -> mailto
