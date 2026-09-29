@@ -64,29 +64,49 @@ document.querySelectorAll('#skillFilters .chip').forEach(btn => {
 
 // Print the attached CV PDF (not the webpage)
 const CV_PDF_URL = 'Dr_Amr_Ashour_CV.pdf';
-function printCV() {
-  let frame = document.getElementById('pdfPrintFrame');
-  if (!frame) {
+async function printCV() {
+  // NOTE: browsers block printing a 0x0 iframe, so we use a real-size
+  // off-screen frame + a delay until the PDF plugin finishes rendering.
+  try {
+    const res = await fetch(CV_PDF_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('PDF not found: ' + res.status);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    let frame = document.getElementById('pdfPrintFrame');
+    if (frame) frame.remove();
     frame = document.createElement('iframe');
     frame.id = 'pdfPrintFrame';
+    frame.src = blobUrl;
+    // Must have real dimensions but kept off-screen
     frame.style.position = 'fixed';
-    frame.style.right = '0';
-    frame.style.bottom = '0';
-    frame.style.width = '0';
-    frame.style.height = '0';
+    frame.style.left = '-9999px';
+    frame.style.top = '0';
+    frame.style.width = '800px';
+    frame.style.height = '600px';
     frame.style.border = '0';
     document.body.appendChild(frame);
+
+    frame.onload = () => {
+      setTimeout(() => {
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } catch (err) {
+          window.open(blobUrl, '_blank');
+        }
+      }, 900);
+    };
+    // Safety fallback if onload never fires (some PDF viewers)
+    setTimeout(() => {
+      if (!frame.dataset.printed) {
+        try { frame.contentWindow.print(); frame.dataset.printed = '1'; } catch (e) { /* ignore */ }
+      }
+    }, 2500);
+  } catch (err) {
+    // Last resort: open the PDF itself in a new tab (user prints with Ctrl+P)
+    window.open(CV_PDF_URL, '_blank');
   }
-  frame.src = CV_PDF_URL;
-  frame.onload = () => {
-    try {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    } catch (err) {
-      // Fallback: open PDF in new tab if direct print is blocked
-      window.open(CV_PDF_URL, '_blank');
-    }
-  };
 }
 
 // Contact form -> mailto
